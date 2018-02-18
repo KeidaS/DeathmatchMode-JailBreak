@@ -19,9 +19,10 @@ bool clientOnZone[MAXPLAYERS + 1] = false;
 bool headshot = false;
 public void OnPluginStart()
 {
-	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_BAN);
-	RegAdminCmd("disabledm", DM_Disable, ADMFLAG_BAN);
+	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
+	RegAdminCmd("disabledm", DM_Disable, ADMFLAG_CHANGEMAP);
 	HookEvent("round_end", Event_OnRoundEnd);
+	HookEvent("player_death", Event_OnPlayerDeath, EventHookMode_Pre);
 }
 
 public void OnClientPutInServer(client) {
@@ -31,8 +32,17 @@ public void OnClientPutInServer(client) {
 public Action:Event_OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
 	SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
 	SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
+	for (int i; i < MAXPLAYERS; i++) {
+		clientOnZone[i] = false;
+	}
 }
 
+public Action:Event_OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) {
+	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if (deathmatch && clientOnZone[client]) {
+		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 1));
+	}
+}
 public Action:DamageController(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
 	if (!deathmatch) {
 		return Plugin_Continue;
@@ -73,7 +83,7 @@ public int Zone_OnClientLeave(client, char[] zone) {
 	} else {
 		clientOnZone[client] = false;
 		if (deathmatch == true && GetClientTeam(client) == 2) {
-			if (IsClientInGame(client) && (!IsFakeClient(client)) && IsPlayerAlive(client)) {
+			if (IsClientInGame(client) && (!IsFakeClient(client)) && IsPlayerAlive(client) && GetClientTeam(client)==2) {
 				RemoveWeapons(client);
 				GivePlayerItem(client, "weapon_knife");
 			}
@@ -145,7 +155,7 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 1, false, false);
 		deathmatch = true;
 		for (int i = 0; i < MAXPLAYERS; i++) {
-			if (clientOnZone[i]) {
+			if (clientOnZone[i] && GetClientTeam(i)==2) {
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
 					//enemies.ReplicateToClient(i, "1");
 					//ff.ReplicateToClient(i, "0");
@@ -163,7 +173,7 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 
 public void RemoveWeapons(int client) {
 	if (GetPlayerWeaponSlot(client, 0) != -1) {
-		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 1));
+		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 0));
 	}
 	if (GetPlayerWeaponSlot(client, 1) != -1) {
 		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 1));
@@ -178,8 +188,6 @@ public Action DM_Disable(int client, int args) {
 		PrintToChat(client, "Deathmatch isn't enabled");
 	} else if (GetClientTeam(client)!=3) {
 		PrintToChat(client, "You must be CT to use this command");
-	} else if (GetClientTeam(client) == 3 && !IsPlayerAlive(client)) {
-		PrintToChat(client, "You must be alive to use this command");
 	} else {
 		deathmatch = false;
 		for (int i = 0; i < MAXPLAYERS; i++) {
