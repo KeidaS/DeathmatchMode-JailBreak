@@ -21,6 +21,7 @@ public void OnPluginStart()
 {
 	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
 	RegAdminCmd("disabledm", DM_Disable, ADMFLAG_CHANGEMAP);
+	RegAdminCmd("ayudadm", DM_Help, ADMFLAG_CHANGEMAP);
 	HookEvent("round_end", Event_OnRoundEnd);
 	HookEvent("player_death", Event_OnPlayerDeath, EventHookMode_Pre);
 }
@@ -94,6 +95,12 @@ public int Zone_OnClientLeave(client, char[] zone) {
 
 public Action Health(int client, int args) {
 	SetEntityHealth(client, args);
+}
+
+public Action DM_Help(int client, int args) {
+	PrintToChat(client, "!zones -> Permite crear/borrar una zona");
+	PrintToChat(client, "!enabledm -> Permite seleccionar el modo de juego y el arma. Activa el DM");
+	PrintToChat(client, "!disabledm-> Desactiva el DM y retira las armas a los terroristas");
 }
 
 public Action DM_Enable(int client, int args) {
@@ -191,7 +198,7 @@ public Action DM_Disable(int client, int args) {
 	} else {
 		deathmatch = false;
 		for (int i = 0; i < MAXPLAYERS; i++) {
-			if (clientOnZone[i] && GetClientTeam(client) == 3) {
+			if (clientOnZone[i] && GetClientTeam(i) == 2) {
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
 					RemoveWeapons(i);
 					GivePlayerItem(i, "weapon_knife");
