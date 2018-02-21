@@ -212,19 +212,17 @@ public Action DM_Disable(int client, int args) {
 	} else if (GetClientTeam(client)!=3) {
 		PrintToChat(client, "You must be CT to use this command");
 	} else {
+		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
+		SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 		deathmatch = false;
 		for (int i = 0; i < MAXPLAYERS; i++) {
 			if (clientOnZone[i] && GetClientTeam(i) == 2) {
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
 					RemoveWeapons(i);
 					GivePlayerItem(i, "weapon_knife");
-					SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-					SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 				}
 			}
 		}
-		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-		SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 		knife = false;
 	}
 }
