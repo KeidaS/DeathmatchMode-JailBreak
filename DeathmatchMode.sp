@@ -17,6 +17,7 @@ public Plugin myinfo =
 bool deathmatch = false;
 bool clientOnZone[MAXPLAYERS + 1] = false;
 bool headshot = false;
+bool knife = false;
 public void OnPluginStart()
 {
 	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
@@ -36,6 +37,7 @@ public Action:Event_OnRoundEnd(Handle:event, const String:name[], bool:dontBroad
 	for (int i; i < MAXPLAYERS; i++) {
 		clientOnZone[i] = false;
 	}
+	deathmatch = false;
 }
 
 public Action:Event_OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) {
@@ -123,6 +125,7 @@ public void ChooseWeapon(int client) {
 	menu.SetTitle("Select weapon for the DM:");
 	menu.AddItem("USP", "USP");
 	menu.AddItem("Desert Eagle", "Desert Eagle");
+	menu.AddItem("Knife", "Knife");
 	menu.Display(client, 20);
 }
 
@@ -158,7 +161,9 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 		//CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
 		char info[64];
 		menu.GetItem(param2, info, sizeof(info));
-		ConfigureMode();
+		if (!StrEqual(info, "Knife")) {
+			ConfigureMode();
+		}
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 1, false, false);
 		deathmatch = true;
 		for (int i = 0; i < MAXPLAYERS; i++) {
@@ -166,12 +171,23 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
 					//enemies.ReplicateToClient(i, "1");
 					//ff.ReplicateToClient(i, "0");
-					RemoveWeapons(i);
-					if (StrEqual(info, "USP")) {
-						GivePlayerItem(i, "weapon_usp_silencer");
+					if (StrEqual(info, "Knife")) {
+						if (GetPlayerWeaponSlot(i, 0) != -1) {
+							RemovePlayerItem(i, GetPlayerWeaponSlot(i, 0));
+						}
+						if (GetPlayerWeaponSlot(i, 1) != -1) {
+							RemovePlayerItem(i, GetPlayerWeaponSlot(i, 1));
+						}
+						knife = true;
+						GivePlayerItem(i, "weapon_knife");	
 					} else {
-						GivePlayerItem(i, "weapon_deagle");
-					}
+						RemoveWeapons(i);
+						if (StrEqual(info, "USP")) {
+							GivePlayerItem(i, "weapon_usp_silencer");
+						} else if (StrEqual(info, "Desert Eagle")){
+							GivePlayerItem(i, "weapon_deagle");
+						}
+					}	
 				}
 			}
 		}
@@ -185,7 +201,7 @@ public void RemoveWeapons(int client) {
 	if (GetPlayerWeaponSlot(client, 1) != -1) {
 		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 1));
 	}
-	if (GetPlayerWeaponSlot(client, 2) != -1) {
+	if (GetPlayerWeaponSlot(client, 2) != -1 && knife == false) {
 		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 2));
 	}
 }
@@ -209,6 +225,7 @@ public Action DM_Disable(int client, int args) {
 		}
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
 		SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
+		knife = false;
 	}
 }
 
