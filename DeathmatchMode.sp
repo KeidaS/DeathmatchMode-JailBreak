@@ -14,10 +14,16 @@ public Plugin myinfo =
 	version = "1.0", 
 	url = "www.hermandadfenix.es"
 };
+
+
 bool deathmatch = false;
 bool clientOnZone[MAXPLAYERS + 1] = false;
 bool headshot = false;
 bool knife = false;
+
+char startDM[64];
+
+int secondsLeft = 3;
 public void OnPluginStart()
 {
 	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
@@ -27,6 +33,11 @@ public void OnPluginStart()
 	HookEvent("player_death", Event_OnPlayerDeath, EventHookMode_Pre);
 }
 
+public void OnMapStart()
+{
+	AddFileToDownloadsTable("sound/deathmatch/blip.mp3");
+	PrecacheSound("*/deathmatch/blip.mp3");
+}
 public void OnClientPutInServer(client) {
 	SDKHook(client, SDKHook_OnTakeDamage, DamageController);
 }
@@ -140,28 +151,14 @@ public int MenuHandler_Mode(Menu menu, MenuAction action, int param1, int param2
 			headshot = false;
 			ChooseWeapon(param1);
 		}
-		
 	}
 	return 0;
 }
 
-/*public Action Timer_WaitForDM (Handle timer) {
-	static int secondsLeft = 3;
-	if (secondsLeft<=0) {
+public Action Timer_WaitForDM (Handle timer) {
+	if (secondsLeft <= 0) {
 		secondsLeft = 3;
-		return Plugin_Stop;
-	}
-	PrintHintTextToAll("DM starts in %i", secondsLeft);
-	secondsLeft--;
-	return Plugin_Continue;
-}*/
-
-public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int param2) {
-	if (action == MenuAction_Select) {
-		//CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
-		char info[64];
-		menu.GetItem(param2, info, sizeof(info));
-		if (!StrEqual(info, "Knife")) {
+		if (!StrEqual(startDM, "Knife")) {
 			ConfigureMode();
 		}
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 1, false, false);
@@ -171,7 +168,7 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
 					//enemies.ReplicateToClient(i, "1");
 					//ff.ReplicateToClient(i, "0");
-					if (StrEqual(info, "Knife")) {
+					if (StrEqual(startDM, "Knife")) {
 						if (GetPlayerWeaponSlot(i, 0) != -1) {
 							RemovePlayerItem(i, GetPlayerWeaponSlot(i, 0));
 						}
@@ -182,15 +179,27 @@ public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int para
 						GivePlayerItem(i, "weapon_knife");	
 					} else {
 						RemoveWeapons(i);
-						if (StrEqual(info, "USP")) {
+						if (StrEqual(startDM, "USP")) {
 							GivePlayerItem(i, "weapon_usp_silencer");
-						} else if (StrEqual(info, "Desert Eagle")){
+						} else if (StrEqual(startDM, "Desert Eagle")){
 							GivePlayerItem(i, "weapon_deagle");
 						}
 					}	
 				}
 			}
 		}
+		return Plugin_Stop;
+	}
+	PrintHintTextToAll("DM starts in %i", secondsLeft);
+	EmitSoundToAll("*/deathmatch/blip.mp3");
+	secondsLeft = secondsLeft - 1;
+	return Plugin_Continue;
+}
+
+public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int param2) {
+	if (action == MenuAction_Select) {
+		menu.GetItem(param2, startDM, sizeof(startDM));
+		CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
 	}
 }
 
