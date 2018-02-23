@@ -57,6 +57,9 @@ public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damage
 		return Plugin_Continue;
 	} else {
 		if ((GetClientHealth(victim) - damage) <= 0 && clientOnZone[victim]) {
+			if (GetPlayerWeaponSlot(victim, 0) != -1) {
+				RemovePlayerItem(victim, GetPlayerWeaponSlot(victim, 0));
+			}
 			if (GetPlayerWeaponSlot(victim, 1) != -1) {
 				RemovePlayerItem(victim, GetPlayerWeaponSlot(victim, 1));
 			}
@@ -141,6 +144,8 @@ public Action DM_Enable(int client, int args) {
 public void ChooseWeapon(int client) {
 	Menu menu = new Menu(MenuHandler_Weapon, MenuAction_Start | MenuAction_Select | MenuAction_Cancel | MenuAction_End);
 	menu.SetTitle("Select weapon for the DM:");
+	menu.AddItem("Scout", "Scout");
+	menu.AddItem("AWP", "AWP");
 	menu.AddItem("USP", "USP");
 	menu.AddItem("Desert Eagle", "Desert Eagle");
 	menu.AddItem("Knife", "Knife");
@@ -188,6 +193,10 @@ public Action Timer_WaitForDM (Handle timer) {
 							GivePlayerItem(i, "weapon_usp_silencer");
 						} else if (StrEqual(startDM, "Desert Eagle")){
 							GivePlayerItem(i, "weapon_deagle");
+						} else if(StrEqual(startDM, "AWP")) {
+							GivePlayerItem(i, "weapon_awp");
+						} else if(StrEqual(startDM, "Scout")) {
+							GivePlayerItem(i, "weapon_ssg08");
 						}
 					}	
 				}
@@ -219,6 +228,9 @@ public void RemoveWeapons(int client) {
 	}
 	if (GetPlayerWeaponSlot(client, 2) != -1 && knife == false) {
 		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 2));
+	}
+	if (GetPlayerWeaponSlot(client, 4) != -1) {
+		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 4));
 	}
 }
 
