@@ -5,7 +5,7 @@ Cmd !enabledm-> Open a menu that allows you to select the game mode:
   – Headshot
   – Normal
   
-Once selected the game mode you have to select the weapon with which you want the Terrorist to kill themselfes (currently there is only USP, Desert Eagle and Knife). At the moment you select the weapon, all the terrorists who are in the area will be given that weapon (if they already had one, will be removed) and the knife will be removed (not if the weapon is Knife).
+Once selected the game mode you have to select the weapon with which you want the Terrorist to kill themselfes (currently there is only USP, Desert Eagle, AWP, Scout and Knife). At the moment you select the weapon, all the terrorists who are in the area will be given that weapon (if they already had one, will be removed) and the knife will be removed (not if the weapon is Knife).
 
 Cmd !disabledm -> Disables the Deathmatch Mode. The terrorists who remain in the area will lose the weapon and the knife will be returned.
 
