@@ -28,9 +28,10 @@ public void OnPluginStart()
 {
 	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
 	RegAdminCmd("disabledm", DM_Disable, ADMFLAG_CHANGEMAP);
+	//RegConsoleCmd("enabledm", DM_Enable);
+	//RegConsoleCmd("disabledm", DM_Disable);
 	RegAdminCmd("ayudadm", DM_Help, ADMFLAG_CHANGEMAP);
 	HookEvent("round_end", Event_OnRoundEnd);
-	HookEvent("player_death", Event_OnPlayerDeath, EventHookMode_Pre);
 }
 
 public void OnMapStart()
@@ -51,10 +52,16 @@ public Action:Event_OnRoundEnd(Handle:event, const String:name[], bool:dontBroad
 	deathmatch = false;
 }
 
-public Action:Event_OnPlayerDeath(Handle:event, const String:name[], bool:dontBroadcast) {
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if (deathmatch && clientOnZone[client]) {
-		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 1));
+public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
+	if (!deathmatch) {
+		return Plugin_Continue;
+	} else {
+		if ((GetClientHealth(victim) - damage) <= 0 && clientOnZone[victim]) {
+			if (GetPlayerWeaponSlot(victim, 1) != -1) {
+				RemovePlayerItem(victim, GetPlayerWeaponSlot(victim, 1));
+			}
+		}
+		return Plugin_Continue;
 	}
 }
 public Action:DamageController(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
@@ -166,8 +173,6 @@ public Action Timer_WaitForDM (Handle timer) {
 		for (int i = 0; i < MAXPLAYERS; i++) {
 			if (clientOnZone[i] && GetClientTeam(i)==2) {
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
-					//enemies.ReplicateToClient(i, "1");
-					//ff.ReplicateToClient(i, "0");
 					if (StrEqual(startDM, "Knife")) {
 						if (GetPlayerWeaponSlot(i, 0) != -1) {
 							RemovePlayerItem(i, GetPlayerWeaponSlot(i, 0));
@@ -186,6 +191,7 @@ public Action Timer_WaitForDM (Handle timer) {
 						}
 					}	
 				}
+				SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
 			}
 		}
 		return Plugin_Stop;
@@ -199,6 +205,7 @@ public Action Timer_WaitForDM (Handle timer) {
 public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		menu.GetItem(param2, startDM, sizeof(startDM));
+		
 		CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
 	}
 }
