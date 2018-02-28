@@ -41,15 +41,27 @@ public void OnMapStart()
 }
 public void OnClientPutInServer(client) {
 	SDKHook(client, SDKHook_OnTakeDamage, DamageController);
+	SDKHook(client, SDKHook_TraceAttack, HeadshotController);
 }
 
 public Action:Event_OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
 	SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-	SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
+	//SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 	for (int i; i < MAXPLAYERS; i++) {
 		clientOnZone[i] = false;
 	}
 	deathmatch = false;
+	headshot = false;
+}
+
+public Action:HeadshotController(victim, &attacker, &inflictor, &Float:damage, &damagetype, &ammotype, hitbox, hitgroup) {
+	if (deathmatch && headshot && clientOnZone[victim] == true && clientOnZone[attacker] == true && GetClientTeam(victim) == 2 && GetClientTeam(attacker) == 2) {
+		if (hitgroup != 1) {
+			damage = 0.0;
+			return Plugin_Changed;
+		}
+	}
+	return Plugin_Continue;
 }
 
 public Action:OnTakeDamage(victim, &attacker, &inflictor, &Float:damage, &damagetype) {
@@ -170,9 +182,9 @@ public int MenuHandler_Mode(Menu menu, MenuAction action, int param1, int param2
 public Action Timer_WaitForDM (Handle timer) {
 	if (secondsLeft <= 0) {
 		secondsLeft = 3;
-		if (!StrEqual(startDM, "Knife")) {
+		/*if (!StrEqual(startDM, "Knife")) {
 			ConfigureMode();
-		}
+		}*/
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 1, false, false);
 		deathmatch = true;
 		for (int i = 0; i < MAXPLAYERS; i++) {
@@ -185,9 +197,13 @@ public Action Timer_WaitForDM (Handle timer) {
 						if (GetPlayerWeaponSlot(i, 1) != -1) {
 							RemovePlayerItem(i, GetPlayerWeaponSlot(i, 1));
 						}
+						if (GetPlayerWeaponSlot(i, 4) != -1) {
+							RemovePlayerItem(i, GetPlayerWeaponSlot(i, 4));
+						}
 						knife = true;
 						GivePlayerItem(i, "weapon_knife");	
 					} else {
+						knife = false;
 						RemoveWeapons(i);
 						if (StrEqual(startDM, "USP")) {
 							GivePlayerItem(i, "weapon_usp_silencer");
@@ -241,8 +257,9 @@ public Action DM_Disable(int client, int args) {
 		PrintToChat(client, "You must be CT to use this command");
 	} else {
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-		SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
+		//SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 		deathmatch = false;
+		headshot = false;
 		for (int i = 0; i < MAXPLAYERS; i++) {
 			if (clientOnZone[i] && GetClientTeam(i) == 2) {
 				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
