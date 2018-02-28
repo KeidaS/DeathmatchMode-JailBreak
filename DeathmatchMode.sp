@@ -28,8 +28,6 @@ public void OnPluginStart()
 {
 	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
 	RegAdminCmd("disabledm", DM_Disable, ADMFLAG_CHANGEMAP);
-	//RegConsoleCmd("enabledm", DM_Enable);
-	//RegConsoleCmd("disabledm", DM_Disable);
 	RegAdminCmd("ayudadm", DM_Help, ADMFLAG_CHANGEMAP);
 	HookEvent("round_end", Event_OnRoundEnd);
 }
@@ -46,7 +44,6 @@ public void OnClientPutInServer(client) {
 
 public Action:Event_OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
 	SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-	//SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 	for (int i; i < MAXPLAYERS; i++) {
 		clientOnZone[i] = false;
 	}
@@ -182,9 +179,6 @@ public int MenuHandler_Mode(Menu menu, MenuAction action, int param1, int param2
 public Action Timer_WaitForDM (Handle timer) {
 	if (secondsLeft <= 0) {
 		secondsLeft = 3;
-		/*if (!StrEqual(startDM, "Knife")) {
-			ConfigureMode();
-		}*/
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 1, false, false);
 		deathmatch = true;
 		for (int i = 0; i < MAXPLAYERS; i++) {
@@ -257,7 +251,6 @@ public Action DM_Disable(int client, int args) {
 		PrintToChat(client, "You must be CT to use this command");
 	} else {
 		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-		//SetConVarInt(FindConVar("mp_damage_headshot_only"), 0, false, false);
 		deathmatch = false;
 		headshot = false;
 		for (int i = 0; i < MAXPLAYERS; i++) {
@@ -269,11 +262,5 @@ public Action DM_Disable(int client, int args) {
 			}
 		}
 		knife = false;
-	}
-}
-
-public void ConfigureMode() {
-	if (headshot == true) {
-		SetConVarInt(FindConVar("mp_damage_headshot_only"), 1, false, false);
 	}
 }
