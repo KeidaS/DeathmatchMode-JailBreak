@@ -26,9 +26,9 @@ char startDM[64];
 int secondsLeft = 3;
 public void OnPluginStart()
 {
-	RegAdminCmd("enabledm", DM_Enable, ADMFLAG_CHANGEMAP);
-	RegAdminCmd("disabledm", DM_Disable, ADMFLAG_CHANGEMAP);
-	RegAdminCmd("ayudadm", DM_Help, ADMFLAG_CHANGEMAP);
+	RegConsoleCmd("enabledm", DM_Enable);
+	RegConsoleCmd("disabledm", DM_Disable);
+	RegConsoleCmd("ayudadm", DM_Help);
 	HookEvent("round_end", Event_OnRoundEnd);
 }
 
@@ -37,9 +37,41 @@ public void OnMapStart()
 	AddFileToDownloadsTable("sound/deathmatch/blip.mp3");
 	PrecacheSound("*/deathmatch/blip.mp3");
 }
+
 public void OnClientPutInServer(client) {
 	SDKHook(client, SDKHook_OnTakeDamage, DamageController);
 	SDKHook(client, SDKHook_TraceAttack, HeadshotController);
+}
+public void OnEntityCreated(entity, const String:Classname[]) {
+	if ((StrEqual(Classname, "hegrenade_projectile") || StrEqual(Classname, "decoy_projectile")) && deathmatch && (StrEqual(startDM, "HE Grenade") || StrEqual(startDM, "Dodgeball"))) {
+        SDKHook(entity, SDKHook_SpawnPost, OnThrowGrenade);
+	}
+}
+
+public void OnThrowGrenade(entity) {
+	int client = GetEntPropEnt(entity, Prop_Send, "m_hOwnerEntity");
+	if (IsPlayerAlive(client) && clientOnZone[client] == true && deathmatch && GetClientTeam(client) == 2) {
+		CreateTimer(1.0, GiveGrenade, EntIndexToEntRef(entity), TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action:GiveGrenade(Handle timer, int entity) {
+	int entity1 = EntRefToEntIndex(entity);
+	int client = GetEntPropEnt(entity1, Prop_Data, "m_hOwnerEntity");
+	if (client == -1 || !IsClientInGame(client) || !IsPlayerAlive(client))
+		return;
+	if (clientOnZone[client] == true && deathmatch && GetClientTeam(client) == 2 && StrEqual(startDM, "HE Grenade")) {
+		GivePlayerItem(client, "weapon_hegrenade");
+	} else if (clientOnZone[client] == true && deathmatch && GetClientTeam(client) == 2 && StrEqual(startDM, "Dodgeball")) {
+		SetEntProp(entity1, Prop_Data, "m_nNextThinkTick", -1);
+		GivePlayerItem(client, "weapon_decoy");
+		CreateTimer(5.0, RemoveDecoy, EntIndexToEntRef(entity1), TIMER_FLAG_NO_MAPCHANGE);
+	}
+}
+
+public Action:RemoveDecoy(Handle timer, int entity) {
+	int entity1 = EntRefToEntIndex(entity);
+	AcceptEntityInput(entity1, "Kill");
 }
 
 public Action:Event_OnRoundEnd(Handle:event, const String:name[], bool:dontBroadcast) {
@@ -130,23 +162,33 @@ public Action Health(int client, int args) {
 }
 
 public Action DM_Help(int client, int args) {
-	PrintToChat(client, "!zones -> Permite crear/borrar una zona");
-	PrintToChat(client, "!enabledm -> Permite seleccionar el modo de juego y el arma. Activa el DM");
-	PrintToChat(client, "!disabledm-> Desactiva el DM y retira las armas a los terroristas");
+	if ((CheckCommandAccess(client, "sm_asd", ADMFLAG_CUSTOM1) && CheckCommandAccess(client, "sm_asd", ADMFLAG_CUSTOM5)) || CheckCommandAccess(client, "sm_asd", ADMFLAG_CHANGEMAP)) {
+		PrintToChat(client, "!zones -> Permite crear/borrar una zona");
+		PrintToChat(client, "!enabledm -> Permite seleccionar el modo de juego y el arma. Activa el DM");
+		PrintToChat(client, "!disabledm-> Desactiva el DM y retira las armas a los terroristas");
+	} else {
+		PrintToChat(client, "You must be Supporter to use this command");
+	}
 }
 
 public Action DM_Enable(int client, int args) {
-	if (GetClientTeam(client)!=3) {
-		PrintToChat(client, "You must be CT to use this command");
-	} else if (GetClientTeam(client) == 3 && !IsPlayerAlive(client)) {
-		PrintToChat(client, "You must be alive to use this command");
+	if ((CheckCommandAccess(client, "sm_asd", ADMFLAG_CUSTOM1) && CheckCommandAccess(client, "sm_asd", ADMFLAG_CUSTOM5)) || CheckCommandAccess(client, "sm_asd", ADMFLAG_CHANGEMAP)) {
+		if (GetClientTeam(client)!=3) {
+			PrintToChat(client, "You must be CT to use this command");
+		} else if (GetClientTeam(client) == 3 && !IsPlayerAlive(client)) {
+			PrintToChat(client, "You must be alive to use this command");
+		} else {
+			Menu menu = new Menu(MenuHandler_Mode, MenuAction_Start | MenuAction_Select | MenuAction_Cancel | MenuAction_End);
+			menu.SetTitle("Select DM mode:");
+			menu.AddItem("Headshot", "Headshot");
+			menu.AddItem("Normal", "Normal");
+			menu.AddItem("HE Grenade", "HE Grenade");
+			menu.AddItem("Dodgeball", "Dodgeball");
+			menu.Display(client, 20);
+		}
 	} else {
-		Menu menu = new Menu(MenuHandler_Mode, MenuAction_Start | MenuAction_Select | MenuAction_Cancel | MenuAction_End);
-		menu.SetTitle("Select DM mode:");
-		menu.AddItem("Headshot", "Headshot");
-		menu.AddItem("Normal", "Normal");
-		menu.Display(client, 20);
-	}
+		PrintToChat(client, "You must be Supporter to use this command");
+	} 
 	return Plugin_Handled;
 }
 
@@ -171,6 +213,12 @@ public int MenuHandler_Mode(Menu menu, MenuAction action, int param1, int param2
 		} else if (StrEqual(info, "Normal")) {
 			headshot = false;
 			ChooseWeapon(param1);
+		} else if (StrEqual(info, "HE Grenade")) {
+			menu.GetItem(param2, startDM, sizeof(startDM));
+			CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
+		} else if (StrEqual(info, "Dodgeball")) {
+			menu.GetItem(param2, startDM, sizeof(startDM));
+			CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
 		}
 	}
 	return 0;
@@ -196,6 +244,13 @@ public Action Timer_WaitForDM (Handle timer) {
 						}
 						knife = true;
 						GivePlayerItem(i, "weapon_knife");	
+					} else if (StrEqual(startDM, "HE Grenade")) {
+						RemoveWeapons(i);
+						GivePlayerItem(i, "weapon_hegrenade");
+					} else if (StrEqual(startDM, "Dodgeball")) {
+						RemoveWeapons(i);
+						SetEntityHealth(i, 1);
+						GivePlayerItem(i, "weapon_decoy");
 					} else {
 						knife = false;
 						RemoveWeapons(i);
@@ -224,7 +279,6 @@ public Action Timer_WaitForDM (Handle timer) {
 public int MenuHandler_Weapon(Menu menu, MenuAction action, int param1, int param2) {
 	if (action == MenuAction_Select) {
 		menu.GetItem(param2, startDM, sizeof(startDM));
-		
 		CreateTimer(1.0, Timer_WaitForDM, _, TIMER_REPEAT);
 	}
 }
@@ -239,28 +293,35 @@ public void RemoveWeapons(int client) {
 	if (GetPlayerWeaponSlot(client, 2) != -1 && knife == false) {
 		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 2));
 	}
+	if (GetPlayerWeaponSlot(client, 3) != -1) {
+		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 3));
+	}
 	if (GetPlayerWeaponSlot(client, 4) != -1) {
 		RemovePlayerItem(client, GetPlayerWeaponSlot(client, 4));
 	}
 }
 
 public Action DM_Disable(int client, int args) {
-	if (!deathmatch) {
-		PrintToChat(client, "Deathmatch isn't enabled");
-	} else if (GetClientTeam(client)!=3) {
-		PrintToChat(client, "You must be CT to use this command");
-	} else {
-		SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
-		deathmatch = false;
-		headshot = false;
-		for (int i = 0; i < MAXPLAYERS; i++) {
-			if (clientOnZone[i] && GetClientTeam(i) == 2) {
-				if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
-					RemoveWeapons(i);
-					GivePlayerItem(i, "weapon_knife");
+	if ((CheckCommandAccess(client, "sm_asd", ADMFLAG_CUSTOM1) && CheckCommandAccess(client, "sm_asd", ADMFLAG_CUSTOM5)) || CheckCommandAccess(client, "sm_asd", ADMFLAG_CHANGEMAP)) {
+		if (!deathmatch) {
+			PrintToChat(client, "Deathmatch isn't enabled");
+		} else if (GetClientTeam(client)!=3) {
+			PrintToChat(client, "You must be CT to use this command");
+		} else {
+			SetConVarInt(FindConVar("mp_teammates_are_enemies"), 0, false, false);
+			deathmatch = false;
+			headshot = false;
+			for (int i = 0; i < MAXPLAYERS; i++) {
+				if (clientOnZone[i] && GetClientTeam(i) == 2) {
+					if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i)) {
+						RemoveWeapons(i);
+						GivePlayerItem(i, "weapon_knife");
+					}
 				}
 			}
+			knife = false;
 		}
-		knife = false;
+	} else {
+		PrintToChat(client, "You must be Supporter to use this command");
 	}
 }
