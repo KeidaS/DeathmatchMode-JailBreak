@@ -1,5 +1,5 @@
 # DeathmatchMode-JailBreak
-Enables deathmatch for players in a specific zone.
+Enables deathmatch for players in a specific zone. JailBreak CS:GO.
 
 Cmd !enabledm-> Open a menu that allows you to select the game mode:
   – Headshot
